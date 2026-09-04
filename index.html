@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentimenKu Tangsel - Dashboard Analisis Sentimen Masyarakat Tangerang Selatan</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            tangsel: {
+              400: '#38bdf8',
+              500: '#0284c7',
+              600: '#0369a1'
+            },
+            positive: '#10b981',
+            neutral: '#f59e0b',
+            negative: '#ef4444'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Header / Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <i class="fa-solid font-bold fa-city text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-white via-sky-200 to-indigo-300 bg-clip-text text-transparent">
+            SentimenKu <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">Tangsel Opini</span>
+          </h1>
+          <p class="text-xs text-slate-400 hidden sm:block">Monitoring Sentimen Publik Kota Tangerang Selatan Terintegrasi Apify</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <button onclick="fetchApifyData()" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-semibold shadow-md shadow-sky-500/20 transition flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-down text-white"></i>
+          <span>Tarik Data Live Tangsel</span>
+        </button>
+        <button id="btn-open-config" onclick="toggleModal('modal-apify')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span class="hidden sm:inline">Kredensial API</span>
+        </button>
+        <button onclick="loadDemoData()" class="px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs sm:text-sm font-medium border border-indigo-500/30 transition flex items-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+          <span class="hidden md:inline">Demo Tangsel</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- API Status & Active Integration Notification Bar -->
+    <div id="status-bar" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+      <div class="flex items-center space-x-3">
+        <span id="status-indicator" class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+        </span>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block">Koneksi Data Apify</span>
+          <span id="status-text" class="text-sm font-medium text-slate-200">Terhubung: Dataset Tangsel (<code class="text-sky-300 font-mono">pNVvBCdTXyvTXi4Sn</code>) | User: <code class="text-amber-300 font-mono">0FPW8ZYtvVlbZ7v6X</code></span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-sky-400 font-medium">
+          <i class="fa-solid fa-location-dot mr-1"></i> Tangsel (Ciputat, Pamulang, BSD, Bintaro, Serpong, Setu)
+        </span>
+        <span id="dataset-count-badge" class="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+          <i class="fa-solid fa-comments text-brand-400 mr-1"></i> <span id="stat-total-badge">0</span> Komentar
+        </span>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Total Comments Card -->
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-5 shadow-sm relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+          <i class="fa-solid fa-comments text-5xl text-sky-400"></i>
+        </div>
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Opini / Komentar</p>
+        <p id="card-total" class="text-3xl font-extrabold text-white mt-1">0</p>
+        <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+          <i class="fa-solid fa-database text-sky-400"></i> Sumber Data Apify Scraper
+        </p>
+      </div>
+
+      <!-- Positive Sentiment Card -->
+      <div class="bg-slate-900 border border-emerald-500/20 rounded-xl p-5 shadow-sm relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+          <i class="fa-solid fa-face-smile text-5xl text-emerald-400"></i>
+        </div>
+        <p class="text-xs font-medium text-emerald-400 uppercase tracking-wider">Sentimen Positif</p>
+        <div class="flex items-baseline space-x-2 mt-1">
+          <p id="card-positive-count" class="text-3xl font-extrabold text-emerald-400">0</p>
+          <span id="card-positive-pct" class="text-sm font-semibold text-emerald-500">(0%)</span>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div id="bar-positive" class="bg-emerald-500 h-full w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <!-- Neutral Sentiment Card -->
+      <div class="bg-slate-900 border border-amber-500/20 rounded-xl p-5 shadow-sm relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+          <i class="fa-solid fa-face-meh text-5xl text-amber-400"></i>
+        </div>
+        <p class="text-xs font-medium text-amber-400 uppercase tracking-wider">Sentimen Netral</p>
+        <div class="flex items-baseline space-x-2 mt-1">
+          <p id="card-neutral-count" class="text-3xl font-extrabold text-amber-400">0</p>
+          <span id="card-neutral-pct" class="text-sm font-semibold text-amber-500">(0%)</span>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div id="bar-neutral" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <!-- Negative Sentiment Card -->
+      <div class="bg-slate-900 border border-rose-500/20 rounded-xl p-5 shadow-sm relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+          <i class="fa-solid fa-face-frown text-5xl text-rose-400"></i>
+        </div>
+        <p class="text-xs font-medium text-rose-400 uppercase tracking-wider">Sentimen Negatif</p>
+        <div class="flex items-baseline space-x-2 mt-1">
+          <p id="card-negative-count" class="text-3xl font-extrabold text-rose-400">0</p>
+          <span id="card-negative-pct" class="text-sm font-semibold text-rose-500">(0%)</span>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div id="bar-negative" class="bg-rose-500 h-full w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Pie Chart: Sentiment Proportion -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-sky-400"></i> Distribusi Sentimen Tangsel
+          </h2>
+          <span class="text-xs text-slate-400">Proporsi %</span>
+        </div>
+        <div class="relative flex items-center justify-center min-h-[250px]">
+          <canvas id="chart-sentiment-pie"></canvas>
+        </div>
+      </div>
+
+      <!-- Bar Chart: Topic / Aspect Sentiment -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm lg:col-span-2 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-arrow-trend-up text-sky-400"></i> Topik & Kata Kunci Terpopuler Opini Tangsel
+          </h2>
+          <span class="text-xs text-slate-400">Frekuensi kemunculan kata</span>
+        </div>
+        <div class="relative flex items-center justify-center min-h-[250px]">
+          <canvas id="chart-keywords-bar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comments Explorer & Table Section -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+      <!-- Controls Header -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-sky-400"></i> Rincian Opini Warga & Analisis NLP
+          </h2>
+          <p class="text-xs text-slate-400">Klasifikasi otomatis komentar isu fasilitas, transportasi, & pelayanan Pemkot Tangsel</p>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Search Box -->
+          <div class="relative flex-1 sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" id="input-search" onkeyup="filterComments()" placeholder="Cari wilayah/isu (Ciputat, BSD, Macet...)" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          </div>
+
+          <!-- Sentiment Filter Dropdown -->
+          <select id="select-sentiment-filter" onchange="filterComments()" 
+            class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
+            <option value="ALL">Semua Sentimen</option>
+            <option value="POSITIF">Positif Saja</option>
+            <option value="NETRAL">Netral Saja</option>
+            <option value="NEGATIF">Negatif Saja</option>
+          </select>
+
+          <!-- Export CSV Button -->
+          <button onclick="exportToCSV()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-csv text-emerald-400"></i>
+            <span>Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Comments List / Table -->
+      <div class="overflow-x-auto border border-slate-800 rounded-lg">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <tr>
+              <th scope="col" class="px-4 py-3">Pengguna & Platform</th>
+              <th scope="col" class="px-4 py-3">Isi Komentar / Opini Warga Tangsel</th>
+              <th scope="col" class="px-4 py-3 text-center">Skor NLP</th>
+              <th scope="col" class="px-4 py-3 text-center">Klasifikasi Sentimen</th>
+              <th scope="col" class="px-4 py-3">Waktu WET/Tgl</th>
+            </tr>
+          </thead>
+          <tbody id="table-comments-body" class="divide-y divide-slate-800/60 bg-slate-900/50">
+            <!-- Dynamic rows inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination / Footer Info -->
+      <div class="flex items-center justify-between text-xs text-slate-400 pt-2">
+        <span id="pagination-info">Menampilkan 0 dari 0 komentar</span>
+        <div class="flex items-center space-x-2">
+          <button id="btn-prev-page" onclick="changePage(-1)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-chevron-left"></i> Prev
+          </button>
+          <span id="page-num" class="font-medium text-slate-200">1</span>
+          <button id="btn-next-page" onclick="changePage(1)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Next <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: Apify Settings & Integration Input -->
+  <div id="modal-apify" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative space-y-5">
+      <!-- Close Button -->
+      <button onclick="toggleModal('modal-apify')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400">
+          <i class="fa-solid fa-plug text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white">Konfigurasi Apify API Tangsel</h3>
+          <p class="text-xs text-slate-400">Kredensial dan Endpoint Dataset Publik Tangsel</p>
+        </div>
+      </div>
+
+      <!-- Modal Form -->
+      <div class="space-y-4 text-xs">
+        <!-- API Token Field -->
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Apify API Token <span class="text-rose-400">*</span></label>
+          <div class="relative">
+            <input type="password" id="input-apify-token" value="apify_api_IOsRG3TqcNOPT0vEcRv0La6W1HuAR730LVVE" placeholder="apify_api_xxxxxxxxxxxxxxxxxxxxxxxx" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-sky-500">
+            <button type="button" onclick="togglePasswordVisibility('input-apify-token')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- User ID & Dataset ID Field -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">Dataset ID <span class="text-rose-400">*</span></label>
+            <input type="text" id="input-apify-dataset-id" value="pNVvBCdTXyvTXi4Sn" placeholder="Dataset ID" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">Apify User / Task ID</label>
+            <input type="text" id="input-apify-user-id" value="0FPW8ZYtvVlbZ7v6X" placeholder="User ID" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <!-- Platform Source Selector -->
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Platform Media Sosial</label>
+          <select id="select-platform-source" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-sky-500">
+            <option value="Instagram">Instagram (Post/Reels Comments Scraper)</option>
+            <option value="Twitter / X">Twitter / X (Replies & Tweets Scraper)</option>
+            <option value="TikTok">TikTok Comments Scraper</option>
+            <option value="YouTube">YouTube Comments Scraper</option>
+            <option value="Auto-Detect" selected>Auto Detect / Multi-Platform</option>
+          </select>
+        </div>
+
+        <!-- Apify Endpoint Preview -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] text-slate-400 space-y-1">
+          <p class="font-semibold text-sky-400"><i class="fa-solid fa-circle-info mr-1"></i> Tangsel Live API Endpoint URL:</p>
+          <code class="block text-sky-300 bg-slate-900 p-2 rounded font-mono text-[10px] break-all">
+            https://api.apify.com/v2/datasets/pNVvBCdTXyvTXi4Sn/items?token=apify_api_IOsRG3TqcNOPT0vEcRv0La6W1HuAR730LVVE
+          </code>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end space-x-2 pt-2">
+        <button onclick="toggleModal('modal-apify')" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Batal
+        </button>
+        <button id="btn-fetch-apify" onclick="fetchApifyData()" class="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-sky-500/20">
+          <i class="fa-solid fa-cloud-arrow-down"></i>
+          <span>Tarik Data Sekarang</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-800 bg-slate-900 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>&copy; 2026 SentimenKu Tangsel - Sistem Analisis Opini Masyarakat Kota Tangerang Selatan</p>
+      <div class="flex items-center space-x-4">
+        <span class="hover:text-slate-300 cursor-pointer" onclick="toggleModal('modal-apify')">Pengaturan Apify</span>
+        <span>•</span>
+        <span class="hover:text-slate-300 cursor-pointer" onclick="loadDemoData()">Reset Data Demo</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+
+    // Global Application State
+    let currentCommentsData = [];
+    let filteredCommentsData = [];
+    let currentPage = 1;
+    const itemsPerPage = 8;
+    let pieChartInstance = null;
+    let barChartInstance = null;
+
+    // Indonesian & Tangsel Specific Sentiment Lexicon
+    const positiveWords = [
+      'bagus', 'keren', 'mantap', 'hebat', 'suka', 'cinta', 'murah', 'cepat', 'ramah', 'puas',
+      'berkualitas', 'oke', 'mantul', 'rekomendasi', 'juara', 'jos', 'sesuai', 'aman', 'lancar',
+      'membantu', 'setuju', 'terjangkau', 'top', 'apik', 'luar biasa', 'memuaskan', 'senang',
+      'gembira', 'seneng', 'terbaik', 'solutif', 'inovatif', 'maju', 'semangat', 'terpuji',
+      'menginspirasi', 'berhasil', 'sukses', 'bisa', 'bijak', 'positif', 'untung', 'syukur',
+      'gercep', 'bersih', 'asri', 'mulus', 'tertib', 'tertata', 'nyaman', 'estetik', 'pangling'
+    ];
+
+    const negativeWords = [
+      'jelek', 'buruk', 'kecewa', 'mengecewakan', 'mahal', 'lambat', 'lemot', 'parah', 'cacat',
+      'rugi', 'bohong', 'penipu', 'rusak', 'zonk', 'kapok', 'bapuk', 'gajelas', 'emosi', 'ampas',
+      'bahaya', 'penipuan', 'tipu', 'ribet', 'buang', 'sampah', 'ngeselin', 'kesal', 'marah',
+      'gaje', 'lamban', 'korupsi', 'gagal', 'susah', 'sulit', 'bodoh', 'nol',
+      'dusta', 'hoaks', 'hoax', 'macet', 'banjir', 'lubang', 'gelap', 'bau', 'kumuh', 'becek',
+      'antri', 'lamban', 'lama', 'lambat'
+    ];
+
+    const negationWords = ['tidak', 'bukan', 'gak', 'ga', 'kurang', 'jangan', 'tak', 'tanpa'];
+
+    // Tangsel Regional Public Issues Demo Dataset (Fallback if API unavailable)
+    const demoTangselComments = [
+      { id: 1, user: "@bintaro_citizen", platform: "Instagram", text: "Taman Kota BSD & Bintaro sekarang bersih banget dan rapi, nyaman buat olahraga pagi bareng keluarga!", date: "2026-09-04 08:30" },
+      { id: 2, user: "@pamulang_mulus", platform: "Twitter / X", text: "Jalanan sekitar Pamulang Unpam sudah mulai diperbaiki dan mulus, lalu lintas jadi lebih lancar!", date: "2026-09-04 09:15" },
+      { id: 3, user: "@ciputat_stress", platform: "Twitter / X", text: "Pasar Ciputat jam sibuk macet parah banget, mohon petugas Dinas Perhubungan Tangsel lebih gercep penataannya.", date: "2026-09-04 10:00" },
+      { id: 4, user: "@serpong_view", platform: "Instagram", text: "Layanan angkutan umum baru di Tangsel makin terintegrasi dan nyaman. Mantap Pemkot Tangsel!", date: "2026-09-04 10:45" },
+      { id: 5, user: "@warga_setu", platform: "TikTok", text: "Penerangan jalan umum di area Setu masih ada yang gelap kalau malam, cukup berbahaya.", date: "2026-09-04 11:20" },
+      { id: 6, user: "@pondok_aren_boy", platform: "Instagram", text: "Pelayanan pembuatan KTP dan perizinan di Samsat/Disdukcapil Tangsel cepat ramah & teratur!", date: "2026-09-04 12:10" },
+      { id: 7, user: "@bsd_commuter", platform: "Twitter / X", text: "Akses bus feeder Transjakarta dari Tangsel ke Jakarta makin oke, hemat waktu dan biaya.", date: "2026-09-04 13:00" },
+      { id: 8, user: "@tangsel_info", platform: "YouTube", text: "Program pengelolaan sampah mandiri di lingkungan RT/RW sangat positif dan solutif.", date: "2026-09-04 14:15" },
+      { id: 9, user: "@jurnalis_tangsel", platform: "Instagram", text: "Pembangunan drainase cegah banjir di beberapa titik terus digencarkan, semoga aman saat hujan deras.", date: "2026-09-04 15:30" },
+      { id: 10, user: "@anak_ciputat", platform: "TikTok", text: "Sistem pendaftaran antrean faskes puskesmas Tangsel via online simpel dan anti ribet.", date: "2026-09-04 16:20" }
+    ];
+
+    /**
+     * Rule-based Sentiment Analyzer for Indonesian Text
+     */
+    function analyzeSentiment(text) {
+      if (!text) return { sentiment: 'NETRAL', score: 0, keywords: [] };
+
+      const cleanText = text.toLowerCase().replace(/[^\w\s]/gi, '');
+      const words = cleanText.split(/\s+/);
+      
+      let posScore = 0;
+      let negScore = 0;
+      let matchedKeywords = [];
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const prevWord = i > 0 ? words[i - 1] : '';
+        const isNegated = negationWords.includes(prevWord);
+
+        if (positiveWords.includes(word)) {
+          if (isNegated) {
+            negScore += 1.5;
+            matchedKeywords.push(`!${word}`);
+          } else {
+            posScore += 1;
+            matchedKeywords.push(word);
+          }
+        } else if (negativeWords.includes(word)) {
+          if (isNegated) {
+            posScore += 1;
+            matchedKeywords.push(`!${word}`);
+          } else {
+            negScore += 1.5;
+            matchedKeywords.push(word);
+          }
+        }
+      }
+
+      const netScore = (posScore - negScore) / Math.max(1, (posScore + negScore));
+
+      let label = 'NETRAL';
+      if (netScore > 0.15 || (posScore > 0 && negScore === 0)) {
+        label = 'POSITIF';
+      } else if (netScore < -0.15 || (negScore > 0 && posScore === 0)) {
+        label = 'NEGATIF';
+      }
+
+      return {
+        sentiment: label,
+        score: parseFloat(netScore.toFixed(2)),
+        keywords: matchedKeywords
+      };
+    }
+
+    /**
+     * Fetch dataset items from Apify API using user Token & Dataset ID
+     */
+    async function fetchApifyData() {
+      const token = document.getElementById('input-apify-token').value.trim();
+      const datasetId = document.getElementById('input-apify-dataset-id').value.trim();
+      const userId = document.getElementById('input-apify-user-id').value.trim();
+      const platform = document.getElementById('select-platform-source').value;
+
+      if (!token || !datasetId) {
+        alert('Mohon lengkapi Apify API Token dan Dataset ID!');
+        return;
+      }
+
+      const btn = document.getElementById('btn-fetch-apify');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Menghubungkan ke Apify...`;
+
+      try {
+        // Construct Apify API Endpoint V2 URL
+        const apiUrl = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}&clean=true&format=json`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          throw new Error(`Gagal terhubung ke Apify. HTTP Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          alert('Berhasil terhubung ke Apify, namun data dataset saat ini masih kosong. Menampilkan format fallback demo.');
+          loadDemoData();
+          return;
+        }
+
+        // Standardize Apify items format
+        const processedList = data.map((item, index) => {
+          const textContent = item.text || item.comment || item.caption || item.fullText || item.content || item.commentText || "Tidak ada teks komentar";
+          const username = item.ownerUsername || item.username || item.user || item.author || `@warga_tangsel_${index + 1}`;
+          const date = item.timestamp || item.createdAt || item.date || new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+          const analysis = analyzeSentiment(textContent);
+
+          return {
+            id: index + 1,
+            user: username.startsWith('@') ? username : `@${username}`,
+            platform: platform === 'Auto-Detect' ? (item.platform || 'Social Media') : platform,
+            text: textContent,
+            sentiment: analysis.sentiment,
+            score: analysis.score,
+            keywords: analysis.keywords,
+            date: date
+          };
+        });
+
+        // Update State
+        currentCommentsData = processedList;
+        filteredCommentsData = [...currentCommentsData];
+        currentPage = 1;
+
+        // Update UI Indicator
+        document.getElementById('status-indicator').firstElementChild.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+        document.getElementById('status-indicator').lastElementChild.className = 'relative inline-flex rounded-full h-3 w-3 bg-emerald-500';
+        document.getElementById('status-text').innerHTML = `LIVE APIFY: Dataset Tangsel (<code class="text-sky-300 font-mono">${datasetId}</code>) | User: <code class="text-amber-300 font-mono">${userId || 'Active'}</code>`;
+
+        updateDashboard();
+        
+        // Hide modal if open
+        const modal = document.getElementById('modal-apify');
+        if (!modal.classList.contains('hidden')) {
+          toggleModal('modal-apify');
+        }
+
+      } catch (err) {
+        console.error('Apify Fetch Error:', err);
+        alert(`Gagal mengambil data dari Apify Endpoint Tangsel:\n${err.message}\n\nMemuat data sampel opini Tangsel.`);
+        loadDemoData();
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    /**
+     * Load Tangsel Public Issues Demo Dataset
+     */
+    function loadDemoData() {
+      const processed = demoTangselComments.map(item => {
+        const analysis = analyzeSentiment(item.text);
+        return {
+          ...item,
+          sentiment: analysis.sentiment,
+          score: analysis.score,
+          keywords: analysis.keywords
+        };
+      });
+
+      currentCommentsData = processed;
+      filteredCommentsData = [...currentCommentsData];
+      currentPage = 1;
+
+      document.getElementById('status-indicator').firstElementChild.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75';
+      document.getElementById('status-indicator').lastElementChild.className = 'relative inline-flex rounded-full h-3 w-3 bg-sky-500';
+      document.getElementById('status-text').innerHTML = `Mode Demo Opini Tangsel | Preset Dataset: <code class="text-sky-300 font-mono">pNVvBCdTXyvTXi4Sn</code>`;
+
+      updateDashboard();
+    }
+
+    /**
+     * Recalculate dashboard statistics & charts
+     */
+    function updateDashboard() {
+      const total = currentCommentsData.length;
+      let posCount = 0;
+      let neuCount = 0;
+      let negCount = 0;
+
+      currentCommentsData.forEach(item => {
+        if (item.sentiment === 'POSITIF') posCount++;
+        else if (item.sentiment === 'NEGATIF') negCount++;
+        else neuCount++;
+      });
+
+      const posPct = total ? Math.round((posCount / total) * 100) : 0;
+      const neuPct = total ? Math.round((neuCount / total) * 100) : 0;
+      const negPct = total ? Math.round((negCount / total) * 100) : 0;
+
+      // Update Card Elements
+      document.getElementById('card-total').innerText = total;
+      document.getElementById('stat-total-badge').innerText = total;
+
+      document.getElementById('card-positive-count').innerText = posCount;
+      document.getElementById('card-positive-pct').innerText = `(${posPct}%)`;
+      document.getElementById('bar-positive').style.width = `${posPct}%`;
+
+      document.getElementById('card-neutral-count').innerText = neuCount;
+      document.getElementById('card-neutral-pct').innerText = `(${neuPct}%)`;
+      document.getElementById('bar-neutral').style.width = `${neuPct}%`;
+
+      document.getElementById('card-negative-count').innerText = negCount;
+      document.getElementById('card-negative-pct').innerText = `(${negPct}%)`;
+      document.getElementById('bar-negative').style.width = `${negPct}%`;
+
+      renderPieChart(posCount, neuCount, negCount);
+      renderBarKeywordsChart();
+
+      filterComments();
+    }
+
+    /**
+     * Render Doughnut Chart for Sentiment Distribution
+     */
+    function renderPieChart(pos, neu, neg) {
+      const ctx = document.getElementById('chart-sentiment-pie').getContext('2d');
+
+      if (pieChartInstance) {
+        pieChartInstance.destroy();
+      }
+
+      pieChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Positif', 'Netral', 'Negatif'],
+          datasets: [{
+            data: [pos, neu, neg],
+            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+            borderWidth: 2,
+            borderColor: '#0f172a'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    /**
+     * Render Bar Chart for Key Topics & Keywords Frequency
+     */
+    function renderBarKeywordsChart() {
+      const ctx = document.getElementById('chart-keywords-bar').getContext('2d');
+
+      const wordCounts = {};
+      currentCommentsData.forEach(item => {
+        if (item.keywords && Array.isArray(item.keywords)) {
+          item.keywords.forEach(kw => {
+            const cleanKw = kw.replace('!', '');
+            wordCounts[cleanKw] = (wordCounts[cleanKw] || 0) + 1;
+          });
+        }
+      });
+
+      const sortedKeywords = Object.keys(wordCounts)
+        .sort((a, b) => wordCounts[b] - a[b])
+        .slice(0, 8);
+
+      const counts = sortedKeywords.map(k => wordCounts[k]);
+
+      if (barChartInstance) {
+        barChartInstance.destroy();
+      }
+
+      barChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedKeywords.length ? sortedKeywords : ['belum ada data'],
+          datasets: [{
+            label: 'Frekuensi Kata Kunci Opini',
+            data: counts.length ? counts : [0],
+            backgroundColor: '#0284c7',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: '#94a3b8' },
+              grid: { color: '#1e293b' }
+            },
+            x: {
+              ticks: { color: '#94a3b8' },
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    /**
+     * Filter comments based on query and sentiment selector
+     */
+    function filterComments() {
+      const searchQuery = document.getElementById('input-search').value.toLowerCase();
+      const sentimentFilter = document.getElementById('select-sentiment-filter').value;
+
+      filteredCommentsData = currentCommentsData.filter(item => {
+        const matchesSearch = item.text.toLowerCase().includes(searchQuery) || item.user.toLowerCase().includes(searchQuery);
+        const matchesSentiment = (sentimentFilter === 'ALL') || (item.sentiment === sentimentFilter);
+        return matchesSearch && matchesSentiment;
+      });
+
+      currentPage = 1;
+      renderTable();
+    }
+
+    /**
+     * Render Table Page
+     */
+    function renderTable() {
+      const tbody = document.getElementById('table-comments-body');
+      tbody.innerHTML = '';
+
+      const totalItems = filteredCommentsData.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+      if (currentPage < 1) currentPage = 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+      const pageItems = filteredCommentsData.slice(startIndex, endIndex);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">
+              <i class="fa-solid fa-folder-open text-2xl block mb-2 opacity-50"></i>
+              Tidak ada komentar yang cocok dengan pencarian / filter.
+            </td>
+          </tr>
+        `;
+      } else {
+        pageItems.forEach(item => {
+          let badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+          let icon = 'fa-face-meh';
+
+          if (item.sentiment === 'POSITIF') {
+            badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+            icon = 'fa-face-smile';
+          } else if (item.sentiment === 'NEGATIF') {
+            badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+            icon = 'fa-face-frown';
+          }
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/40 transition-colors';
+          tr.innerHTML = `
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="font-semibold text-slate-200">${escapeHtml(item.user)}</div>
+              <div class="text-[10px] text-slate-400 flex items-center gap-1">
+                <i class="fa-solid fa-share-nodes text-sky-400"></i> ${escapeHtml(item.platform || 'Social')}
+              </div>
+            </td>
+            <td class="px-4 py-3 max-w-md">
+              <p class="text-slate-300 leading-relaxed">${escapeHtml(item.text)}</p>
+              ${item.keywords && item.keywords.length ? `
+                <div class="flex flex-wrap gap-1 mt-1">
+                  ${item.keywords.map(k => `<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700">#${k}</span>`).join('')}
+                </div>
+              ` : ''}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap font-mono text-xs">
+              ${item.score > 0 ? '+' : ''}${item.score}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${badgeColor}">
+                <i class="fa-solid ${icon}"></i> ${item.sentiment}
+              </span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-slate-400 text-[11px]">
+              ${escapeHtml(item.date)}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('pagination-info').innerText = `Menampilkan ${totalItems ? startIndex + 1 : 0}-${endIndex} dari ${totalItems} opini`;
+      document.getElementById('page-num').innerText = `${currentPage} / ${totalPages}`;
+      document.getElementById('btn-prev-page').disabled = (currentPage <= 1);
+      document.getElementById('btn-next-page').disabled = (currentPage >= totalPages);
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderTable();
+    }
+
+    /**
+     * Download filtered comments to CSV
+     */
+    function exportToCSV() {
+      if (!filteredCommentsData.length) {
+        alert('Tidak ada data untuk diekspor!');
+        return;
+      }
+
+      let csvContent = "Pengguna,Platform,Isi Komentar Tangsel,Klasifikasi Sentimen,Skor,Tanggal\n";
+
+      filteredCommentsData.forEach(item => {
+        const cleanUser = `"${(item.user || '').replace(/"/g, '""')}"`;
+        const cleanPlatform = `"${(item.platform || '').replace(/"/g, '""')}"`;
+        const cleanText = `"${(item.text || '').replace(/"/g, '""')}"`;
+        const cleanSentiment = `"${item.sentiment}"`;
+        const cleanScore = item.score;
+        const cleanDate = `"${item.date}"`;
+
+        csvContent += `${cleanUser},${cleanPlatform},${cleanText},${cleanSentiment},${cleanScore},${cleanDate}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Analisis_Sentimen_Tangsel_Apify_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function toggleModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.toggle('hidden');
+    }
+
+    function togglePasswordVisibility(inputId) {
+      const input = document.getElementById(inputId);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Auto-fetch data on window load using preset Apify credentials
+    window.onload = function() {
+      // Try pulling live data first; falls back to demo data if offline/cors
+      fetchApifyData();
+    };
+  </script>
+</body>
+</html>
